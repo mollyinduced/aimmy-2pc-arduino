@@ -1,6 +1,7 @@
 using Aimmy2.Class;
 using Aimmy2.MouseMovementLibraries.GHubSupport;
 using Class;
+using MouseMovementLibraries.ArduinoSupport;
 using MouseMovementLibraries.ddxoftSupport;
 using MouseMovementLibraries.RazerSupport;
 using MouseMovementLibraries.SendInputSupport;
@@ -14,6 +15,8 @@ namespace InputLogic
         private static readonly double ScreenWidth = WinAPICaller.ScreenWidth;
         private static readonly double ScreenHeight = WinAPICaller.ScreenHeight;
 
+        private static ArduinoInput? arduinoInput;
+
         private static DateTime LastClickTime = DateTime.MinValue;
         private static int LastAntiRecoilClickTime = 0;
         private static bool isSpraying = false;
@@ -26,6 +29,19 @@ namespace InputLogic
         public static double smoothingFactor = 0.5;
         public static bool IsEMASmoothingEnabled = false;
 
+        public static void InitArduino(string comPort)
+        {
+            try
+            {
+                arduinoInput = new ArduinoInput(comPort);
+            }
+            catch (Exception ex)
+            {
+                // You can log or display error here
+                System.Windows.MessageBox.Show($"Failed to connect to {comPort}:\n{ex.Message}", "Arduino Error");
+            }
+        }
+
         [DllImport("user32.dll")]
         private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
 
@@ -34,6 +50,7 @@ namespace InputLogic
         private static double EmaSmoothing(double previousValue, double currentValue, double smoothingFactor) => (currentValue * smoothingFactor) + (previousValue * (1 - smoothingFactor));
 
         // Cleanup
+        // not used with arduino
         private static (Action down, Action up) GetMouseActions()
         {
             string mouseMovementMethod = Dictionary.dropdownState["Mouse Movement Method"];
@@ -104,11 +121,11 @@ namespace InputLogic
                 return;
             }
 
-            var (mouseDown, mouseUp) = GetMouseActions();
+            //var (mouseDown, mouseUp) = GetMouseActions();
 
-            mouseDown.Invoke();
-            await Task.Delay(clickDelayMilliseconds);
-            mouseUp.Invoke();
+            //mouseDown.Invoke();
+            //await Task.Delay(clickDelayMilliseconds);
+            //mouseUp.Invoke();
 
             LastClickTime = DateTime.UtcNow;
         }
@@ -152,28 +169,31 @@ namespace InputLogic
             int xRecoil = (int)Dictionary.AntiRecoilSettings["X Recoil (Left/Right)"];
             int yRecoil = (int)Dictionary.AntiRecoilSettings["Y Recoil (Up/Down)"];
 
-            switch (Dictionary.dropdownState["Mouse Movement Method"])
-            {
-                case "SendInput":
-                    SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, xRecoil, yRecoil);
-                    break;
+            //switch (Dictionary.dropdownState["Mouse Movement Method"])
+            //{
+            //    case "SendInput":
+            //        SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, xRecoil, yRecoil);
+            //        break;
 
-                case "LG HUB":
-                    LGMouse.Move(0, xRecoil, yRecoil, 0);
-                    break;
+            //    case "LG HUB":
+            //        LGMouse.Move(0, xRecoil, yRecoil, 0);
+            //        break;
 
-                case "Razer Synapse (Require Razer Peripheral)":
-                    RZMouse.mouse_move(xRecoil, yRecoil, true);
-                    break;
+            //    case "Razer Synapse (Require Razer Peripheral)":
+            //        RZMouse.mouse_move(xRecoil, yRecoil, true);
+            //        break;
 
-                case "ddxoft Virtual Input Driver":
-                    DdxoftMain.ddxoftInstance.movR!(xRecoil, yRecoil);
-                    break;
+            //    case "ddxoft Virtual Input Driver":
+            //        DdxoftMain.ddxoftInstance.movR!(xRecoil, yRecoil);
+            //        break;
 
-                default:
-                    mouse_event(MOUSEEVENTF_MOVE, (uint)xRecoil, (uint)yRecoil, 0, 0);
-                    break;
-            }
+            //    default:
+            //        mouse_event(MOUSEEVENTF_MOVE, (uint)xRecoil, (uint)yRecoil, 0, 0);
+            //        break;
+            //}
+
+            arduinoInput?.SendMouseCommand(xRecoil, yRecoil, 0);
+
 
             LastAntiRecoilClickTime = DateTime.UtcNow.Millisecond;
         }
@@ -234,32 +254,34 @@ namespace InputLogic
             newPosition.X += jitterX;
             newPosition.Y += jitterY;
 
-            switch (Dictionary.dropdownState["Mouse Movement Method"])
-            {
-                case "SendInput":
-                    SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, newPosition.X, newPosition.Y);
-                    break;
+            //switch (Dictionary.dropdownState["Mouse Movement Method"])
+            //{
+            //    case "SendInput":
+            //        SendInputMouse.SendMouseCommand(MOUSEEVENTF_MOVE, newPosition.X, newPosition.Y);
+            //        break;
 
-                case "LG HUB":
-                    LGMouse.Move(0, newPosition.X, newPosition.Y, 0);
-                    break;
+            //    case "LG HUB":
+            //        LGMouse.Move(0, newPosition.X, newPosition.Y, 0);
+            //        break;
 
-                case "Razer Synapse (Require Razer Peripheral)":
-                    RZMouse.mouse_move(newPosition.X, newPosition.Y, true);
-                    break;
+            //    case "Razer Synapse (Require Razer Peripheral)":
+            //        RZMouse.mouse_move(newPosition.X, newPosition.Y, true);
+            //        break;
 
-                case "ddxoft Virtual Input Driver":
-                    DdxoftMain.ddxoftInstance.movR!(newPosition.X, newPosition.Y);
-                    break;
+            //    case "ddxoft Virtual Input Driver":
+            //        DdxoftMain.ddxoftInstance.movR!(newPosition.X, newPosition.Y);
+            //        break;
 
-                default:
-                    mouse_event(MOUSEEVENTF_MOVE, (uint)newPosition.X, (uint)newPosition.Y, 0, 0);
-                    break;
-            }
+            //    default:
+            //        mouse_event(MOUSEEVENTF_MOVE, (uint)newPosition.X, (uint)newPosition.Y, 0, 0);
+            //        break;
+            //}
+
 
             previousX = newPosition.X;
             previousY = newPosition.Y;
 
+            arduinoInput?.SendMouseCommand(newPosition.X, newPosition.Y, 0);
             if (!Dictionary.toggleState["Auto Trigger"])
             {
                 ResetSprayState();

@@ -34,6 +34,7 @@ namespace Aimmy2.Class
             { "Y Offset (%)", 50 },
             { "X Offset (Left/Right)", 0 },
             { "X Offset (%)", 50 },
+            { "COM Port", 1 },
             { "EMA Smoothening", 0.5},
             { "Auto Trigger Delay", 0.1 },
             { "AI Minimum Confidence", 45 },

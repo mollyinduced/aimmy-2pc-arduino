@@ -2,6 +2,7 @@
 using Aimmy2.Class;
 using Aimmy2.MouseMovementLibraries.GHubSupport;
 using Aimmy2.UILibrary;
+using InputLogic;
 using MouseMovementLibraries.ddxoftSupport;
 using MouseMovementLibraries.RazerSupport;
 using Other;
@@ -146,34 +147,20 @@ namespace Aimmy2.Controls
                 .AddDropdown("Mouse Movement Method", d =>
                 {
                     uiManager.D_MouseMovementMethod = d;
-                    d.DropdownBox.SelectedIndex = -1;  // Prevent auto-selection
 
-                    // Add options
-                    _mainWindow.AddDropdownItem(d, "Mouse Event");
-                    _mainWindow.AddDropdownItem(d, "SendInput");
-                    uiManager.DDI_LGHUB = _mainWindow.AddDropdownItem(d, "LG HUB");
-                    uiManager.DDI_RazerSynapse = _mainWindow.AddDropdownItem(d, "Razer Synapse (Require Razer Peripheral)");
-                    uiManager.DDI_ddxoft = _mainWindow.AddDropdownItem(d, "ddxoft Virtual Input Driver");
+                    _mainWindow.AddDropdownItem(d, "Arduino");
 
-                    // Setup handlers
-                    uiManager.DDI_LGHUB.Selected += async (s, e) =>
-                    {
-                        if (!new LGHubMain().Load())
-                            await ResetToMouseEvent();
-                    };
-
-                    uiManager.DDI_RazerSynapse.Selected += async (s, e) =>
-                    {
-                        if (!await RZMouse.Load())
-                            await ResetToMouseEvent();
-                    };
-
-                    uiManager.DDI_ddxoft.Selected += async (s, e) =>
-                    {
-                        if (!await DdxoftMain.Load())
-                            await ResetToMouseEvent();
-                    };
                 })
+
+                .AddSlider("COM Port", "COM Port", 1, 1, 1, 20)
+                .AddButton("Save COM Port", b =>
+                {
+                    uiManager.B_SaveCOMPort = b;
+                    // prevent duplicate handlers if UI is rebuilt
+                    b.Reader.Click -= SaveComPort_Click;
+                    b.Reader.Click += SaveComPort_Click;
+                })
+
                 .AddDropdown("Screen Capture Method", d =>
                 {
                     uiManager.D_ScreenCaptureMethod = d;
@@ -281,6 +268,57 @@ namespace Aimmy2.Controls
                 })
                 .AddSeparator();
         }
+
+        private void SaveComPort_Click(object? sender, RoutedEventArgs e)
+        {
+            int selectedCom = SafeReadComPort();
+            string comPort = $"COM{selectedCom}";
+
+            try
+            {
+                MouseManager.InitArduino(comPort);
+                MessageBox.Show(
+                    $"Connected to {comPort} successfully.",
+                    "Arduino Connected",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to connect to {comPort}.\n{ex.Message}",
+                    "Arduino Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error
+                );
+            }
+        }
+
+        private static int SafeReadComPort()
+        {
+            const int fallback = 1;
+
+            if (!Dictionary.sliderSettings.TryGetValue("COM Port", out var raw) || raw is null)
+                return fallback;
+
+            try
+            {
+                return raw switch
+                {
+                    int i => i,
+                    double d => Convert.ToInt32(Math.Round(d)),
+                    float f => Convert.ToInt32(Math.Round(f)),
+                    string s => int.TryParse(s, out var v) ? v : fallback,
+                    _ => Convert.ToInt32(raw)
+                };
+            }
+            catch
+            {
+                return fallback;
+            }
+        }
+
 
         private void LoadXYPercentageMenu()
         {

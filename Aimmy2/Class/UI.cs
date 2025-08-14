@@ -106,6 +106,8 @@ namespace Class
         public AToggle? T_CollectDataWhilePlaying { get; set; }
         public AToggle? T_AutoLabelData { get; set; }
         public ADropdown? D_MouseMovementMethod { get; set; }
+        public APButton B_SaveCOMPort { get; set; }
+        public ASlider S_ArduinoCOMPort { get; set; }
         public ADropdown? D_ScreenCaptureMethod { get; set; }
         public ADropdown? D_ImageSize { get; set; }
         public ComboBoxItem? DDI_LGHUB { get; set; }
